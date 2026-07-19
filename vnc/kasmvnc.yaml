@@ -1,0 +1,11 @@
+# KasmVNC configuration (valid keys per the shipped kasmvnc_defaults.yaml).
+# Serve plain HTTP (no SSL) so RunPod's HTTP proxy — which terminates TLS
+# itself — can front the KasmVNC port. If you expose the port directly instead,
+# set protocol: https and require_ssl: true, then connect via https://.
+network:
+  protocol: http
+  interface: 0.0.0.0
+  ssl:
+    require_ssl: false
+
+# Web login uses the user/password in ~/.kasmpasswd (set by entrypoint.sh).

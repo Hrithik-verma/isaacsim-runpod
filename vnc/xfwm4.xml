@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Disable XFCE compositing: GPU-app windows render as transparent with it on. -->
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="use_compositing" type="bool" value="false"/>
+  </property>
+</channel>

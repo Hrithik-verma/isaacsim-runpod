@@ -1,0 +1,36 @@
+# Fast local smoke-test of the KasmVNC + XFCE + entrypoint layer ONLY.
+# No Isaac Sim / no ROS / no GPU needed — just proves the desktop comes up on
+# port 6901 and the password/startup path (the part that crash-looped) works.
+#
+#   docker build -f Dockerfile.test -t isaac-kasm-test .
+#   docker run --rm -p 6901:6901 -e VNC_PW=password isaac-kasm-test
+#   → open http://localhost:6901/  (user: kasm_user, pass: password)
+FROM ubuntu:22.04
+
+ARG KASMVNC_VERSION=1.4.0
+ARG DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+ENV LANG=en_US.UTF-8 DISPLAY=:1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        xfce4 xfce4-terminal xterm dbus-x11 openssh-server \
+        curl wget ca-certificates net-tools locales \
+    && apt-get purge -y xfce4-power-manager light-locker xfce4-screensaver 2>/dev/null || true \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cd /tmp \
+    && wget -q "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_jammy_${KASMVNC_VERSION}_amd64.deb" \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ./kasmvncserver_jammy_${KASMVNC_VERSION}_amd64.deb \
+    && rm -f /tmp/kasmvncserver_*.deb && rm -rf /var/lib/apt/lists/*
+
+COPY vnc/xstartup /root/.vnc/xstartup
+COPY vnc/kasmvnc.yaml /root/.vnc/kasmvnc.yaml
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /root/.vnc/xstartup /usr/local/bin/entrypoint.sh \
+    && mkdir -p /root/Desktop \
+    && touch /root/.vnc/.de-was-selected
+
+EXPOSE 6901 22
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

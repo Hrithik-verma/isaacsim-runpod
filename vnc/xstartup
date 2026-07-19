@@ -1,0 +1,13 @@
+#!/bin/sh
+# KasmVNC session startup — launch an XFCE desktop.
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export XDG_SESSION_TYPE=x11
+export XDG_CURRENT_DESKTOP=XFCE
+export XDG_RUNTIME_DIR=/tmp/runtime-root
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
+
+[ -r "$HOME/.Xresources" ] && xrdb "$HOME/.Xresources"
+
+# startxfce4 runs in the foreground and keeps the VNC session alive.
+exec dbus-launch --exit-with-session startxfce4

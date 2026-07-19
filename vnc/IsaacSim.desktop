@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Isaac Sim
+Comment=Launch NVIDIA Isaac Sim (GUI) with ROS 2 Humble
+Exec=xfce4-terminal --title="Isaac Sim" --command="/usr/local/bin/run-isaacsim.sh"
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Simulation;

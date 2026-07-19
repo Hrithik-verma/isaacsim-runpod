@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Visual Studio Code
+Comment=Code editor
+Exec=/usr/local/bin/code
+Icon=code
+Terminal=false
+Categories=Development;
