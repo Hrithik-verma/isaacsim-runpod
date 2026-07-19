@@ -7,6 +7,9 @@ installed and wired into Isaac Sim's ROS 2 bridge.
 **Prebuilt image:** [`hrithik108/ubuntu-isaac-sim`](https://hub.docker.com/repository/docker/hrithik108/ubuntu-isaac-sim/general)
 on Docker Hub — pull it directly, or build from this repo's `Dockerfile`.
 
+**One-click deploy:** [RunPod template](https://console.runpod.io/deploy?template=tj7pvvjhwl&ref=sa8w351v)
+— spins up a pod from the prebuilt image with the right ports already configured.
+
 ```
 ubuntu:22.04
         └── + Miniforge/conda env `env_isaacsim`
@@ -113,6 +116,12 @@ docker run --rm --gpus all \
 ```
 
 ## Deploy as a RunPod template
+
+**Fastest path:** use the prebuilt template —
+[console.runpod.io/deploy?template=tj7pvvjhwl](https://console.runpod.io/deploy?template=tj7pvvjhwl&ref=sa8w351v).
+Pick an RTX GPU, set `VNC_PW`, deploy.
+
+To set it up manually instead:
 
 1. **Templates → New Template.**
 2. **Container Image:** `hrithik108/ubuntu-isaac-sim:latest`
