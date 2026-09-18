@@ -32,6 +32,7 @@ below.
 | File | Purpose |
 |------|---------|
 | `Dockerfile` | Builds the image (published as `hrithik108/ubuntu-isaac-sim`) |
+| `build.sh` | Version-aware build wrapper (`-v`, `--list`, `--push`, `--clean`) |
 | `Dockerfile.test` | Lightweight variant for quickly testing image changes |
 | `entrypoint.sh` | PID 1 — sets up SSH, starts sshd, configures the KasmVNC password, starts KasmVNC + XFCE |
 | `run-isaacsim.sh` | Activates the `env_isaacsim` conda env, sets ROS 2 bridge env vars, launches Isaac Sim through VirtualGL |
@@ -65,45 +66,75 @@ then double-click the **Isaac Sim** icon on the desktop (or run
 
 ## Build it yourself
 
+`build.sh` is the supported way in. Isaac Sim is pip-installed into a conda env,
+so the version is just a build argument — the script maps the Isaac Sim version
+to the Python ABI and PyTorch wheel that release actually supports, and refuses
+versions NVIDIA does not publish before you spend an hour building:
+
 ```bash
-docker build -t hrithik108/ubuntu-isaac-sim:latest .
-docker push hrithik108/ubuntu-isaac-sim:latest
+./build.sh --list                    # every version on pypi.nvidia.com
+./build.sh                           # the default (6.1.0.0)
+./build.sh -v 5.1.0.0                # any other release
+./build.sh -v 6.1.0.0 --latest --push
+./build.sh -v 6.1.0.0 --no-torch     # smaller image, GUI-only
+./build.sh --clean -v 6.1.0.0        # prune build cache + dangling images first
 ```
 
-Default build args target Isaac Sim 5.0.0 for fast local testing. To ship
-Isaac Sim 6.0 instead:
+| Isaac Sim | Python | Default torch |
+|---|---|---|
+| 6.x | 3.12 | `torch==2.11.0` (cu128) |
+| 5.x | 3.11 | `torch==2.7.0` |
+| 4.x | 3.10 | `torch==2.5.1` / `2.4.0` |
+
+The Python column is not a preference. Isaac Sim wheels are built for exactly
+one CPython ABI (`Requires-Python: ==3.12.*` for 6.x), so a 6.x build on Python
+3.11 dies at pip resolve time with a misleading "no matching distribution".
+
+Building by hand works too, as long as you keep the three knobs in sync:
 
 ```bash
 docker build \
-  --build-arg ISAACSIM_PIP_VERSION=6.0.0.1 \
-  --build-arg PYTHON_VERSION=3.12 \
-  --build-arg TORCH_SPEC=torch==2.11.0 \
-  -t hrithik108/ubuntu-isaac-sim:6.0 .
+  --build-arg ISAACSIM_PIP_VERSION=5.1.0.0 \
+  --build-arg PYTHON_VERSION=3.11 \
+  --build-arg TORCH_SPEC=torch==2.7.0 \
+  -t hrithik108/ubuntu-isaac-sim:5.1 .
 ```
 
 | Build arg | Default | Meaning |
 |-----------|---------|---------|
 | `KASMVNC_VERSION` | `1.4.0` | KasmVNC release to install |
-| `ISAACSIM_PIP_VERSION` | `5.0.0` | Isaac Sim pip package version (`isaacsim[all,extscache]==<ver>`) |
-| `PYTHON_VERSION` | `3.11` | Python version for the `env_isaacsim` conda env |
-| `TORCH_SPEC` | *(empty)* | PyTorch spec to install first, e.g. `torch==2.11.0` (5.0's GUI doesn't need torch; 6.0 does) |
+| `ISAACSIM_PIP_VERSION` | `6.1.0.0` | Isaac Sim pip package version (`isaacsim[all,extscache]==<ver>`) |
+| `PYTHON_VERSION` | `3.12` | Python version for the `env_isaacsim` conda env — must match the release's ABI |
+| `TORCH_SPEC` | `torch==2.11.0` | PyTorch spec installed before Isaac Sim; empty skips it (GUI-only) |
 | `TORCH_CUDA_INDEX` | `https://download.pytorch.org/whl/cu128` | pip index used for `TORCH_SPEC` |
 | `ROS_PACKAGE` | `ros-humble-ros-base` | ROS 2 package to install |
 
 ## Isaac Sim version / upgrading
 
 Because Isaac Sim lives in a pip-installed conda env (`env_isaacsim`) rather
-than being baked into the base image, you can upgrade it **without rebuilding**
-by execing into a running container:
+than being baked into the base image, you can swap it **without rebuilding** by
+execing into a running container — as long as the new version targets the same
+Python ABI (6.x needs 3.12, 5.x needs 3.11):
 
 ```bash
 conda activate env_isaacsim
 pip install "isaacsim[all,extscache]==<new-version>" --extra-index-url https://pypi.nvidia.com
 ```
 
-For a durable upgrade, rebuild the image with `--build-arg
-ISAACSIM_PIP_VERSION=<new-version>` (and matching `PYTHON_VERSION`/
-`TORCH_SPEC` if the new version needs them) instead.
+Across ABIs, or for a durable upgrade, rebuild: `./build.sh -v <new-version>`.
+
+## Disk space
+
+Each image is ~30 GB and the build cache grows fast. To reclaim safely:
+
+```bash
+docker builder prune -af    # build cache
+docker image prune -f       # dangling layers only
+```
+
+Avoid `docker image prune -a` — it deletes every image not currently attached
+to a container, including unrelated ones you still want. `./build.sh --clean`
+runs the two safe commands above before building.
 
 ## Run locally (to test before RunPod)
 

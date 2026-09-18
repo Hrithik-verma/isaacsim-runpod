@@ -4,23 +4,26 @@
 # instead of the baked-in NVIDIA container, so you can swap versions later with
 # a simple `pip install isaacsim[all,extscache]==<ver>` inside the env.
 #
-#   Build: docker build -t <you>/isaacsim-kasmvnc:6.0 .
+#   Build: ./build.sh -v 6.1.0.0        (or: docker build -t <you>/isaacsim-kasmvnc:6.1 .)
 #   Run:   docker run --gpus all -e NVIDIA_DRIVER_CAPABILITIES=all \
 #              -p 6901:6901 -e VNC_PW=secret <img>
 #   Web:   http://<host>:6901   (RunPod: expose 6901 HTTP, 22 TCP)
 FROM ubuntu:22.04
 
 ARG KASMVNC_VERSION=1.4.0
-# ---- Isaac Sim version knobs (defaults = 5.0.0 for fast local testing) -------
-# To ship 6.0 before pushing, build with:
-#   --build-arg ISAACSIM_PIP_VERSION=6.0.0.1 \
-#   --build-arg PYTHON_VERSION=3.12 \
-#   --build-arg TORCH_SPEC=torch==2.11.0
-ARG ISAACSIM_PIP_VERSION=5.0.0
-ARG PYTHON_VERSION=3.11
-# TORCH_SPEC empty = don't install torch (5.0 GUI doesn't need it).
-# For 6.0 set TORCH_SPEC=torch==2.11.0 (installed from the cu128 index first).
-ARG TORCH_SPEC=
+# ---- Isaac Sim version knobs ------------------------------------------------
+# Prefer ./build.sh -- it derives PYTHON_VERSION and TORCH_SPEC from the Isaac
+# Sim version for you, and refuses versions NVIDIA does not publish:
+#   ./build.sh -v 6.1.0.0            # or --list to see what is available
+#
+# Building by hand means keeping these three in sync. Isaac Sim wheels target
+# exactly one CPython ABI, so the Python version is not a free choice:
+#   6.x -> python 3.12    5.x -> python 3.11    4.x -> python 3.10
+ARG ISAACSIM_PIP_VERSION=6.1.0.0
+ARG PYTHON_VERSION=3.12
+# TORCH_SPEC empty = don't install torch (the GUI alone doesn't need it; the
+# RL / replicator extras do). Installed from TORCH_CUDA_INDEX before Isaac Sim.
+ARG TORCH_SPEC=torch==2.11.0
 ARG TORCH_CUDA_INDEX=https://download.pytorch.org/whl/cu128
 ARG ROS_PACKAGE=ros-humble-ros-base
 ARG DEBIAN_FRONTEND=noninteractive
@@ -92,12 +95,12 @@ RUN VGL_URL=$(curl -s https://api.github.com/repos/VirtualGL/virtualgl/releases/
     && apt-get install -y --no-install-recommends /tmp/vgl.deb \
     && rm -f /tmp/vgl.deb \
     # VS Code (Microsoft apt repo)
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends code \
     # Google Chrome
-    && curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | gpg --batch --yes --dearmor -o /usr/share/keyrings/google-chrome.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends google-chrome-stable \
