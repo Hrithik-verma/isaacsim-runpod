@@ -7,7 +7,7 @@ installed and wired into Isaac Sim's ROS 2 bridge.
 **Prebuilt image:** [`hrithik108/ubuntu-isaac-sim`](https://hub.docker.com/repository/docker/hrithik108/ubuntu-isaac-sim/general)
 on Docker Hub — pull it directly, or build from this repo's `Dockerfile`.
 
-**One-click deploy:** [RunPod template](https://console.runpod.io/deploy?template=tj7pvvjhwl&ref=sa8w351v)
+**One-click deploy:** [RunPod template](https://console.runpod.io/deploy?template=wv85vi6zyk&ref=sa8w351v)
 — spins up a pod from the prebuilt image with the right ports already configured.
 
 ```
