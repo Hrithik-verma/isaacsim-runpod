@@ -9,3 +9,38 @@ network:
     require_ssl: false
 
 # Web login uses the user/password in ~/.kasmpasswd (set by entrypoint.sh).
+
+# ---------------------------------------------------------------------------
+# Image quality.
+#
+# The shipped defaults are
+# (min_quality 7 / max_quality 8 on a 0-9 scale) are tuned for office desktops, and they visibly smear a 3D
+# viewport: flat shading goes blotchy and fine detail (a tiled floor, thin
+# geometry) shimmers as the encoder throws bits away.
+#
+# Worse for our case is video_encoding_mode. KasmVNC switches into it when
+# more than area_threshold of the screen keeps changing for time_threshold
+# seconds -- which is precisely what orbiting an Isaac Sim viewport looks like
+# -- and then re-encodes the whole screen as low-quality video. That is the
+# "quality collapses while I move the camera, sharpens when I stop" effect.
+# We push the area threshold to 98% so normal viewport work stays in the
+# high-quality rect encoder.
+#
+# This costs bandwidth, and on a slow link it costs frame rate. Every value is
+# overridable per-pod via the KASM_* environment variables that entrypoint.sh
+# substitutes -- set KASM_MIN_QUALITY=7 KASM_VIDEO_AREA_THRESHOLD=45% to get
+# the stock behaviour back.
+#
+# NOTE: this raises quality, not throughput. KasmVNC encodes frames on the
+# CPU, which caps a 1080p desktop at roughly 15-25 FPS no matter how large the
+# GPU is. Moving the encode onto NVENC is a different change entirely.
+encoding:
+  max_frame_rate: ${KASM_MAX_FRAME_RATE}
+  rect_encoding_mode:
+    min_quality: ${KASM_MIN_QUALITY}
+    max_quality: ${KASM_MAX_QUALITY}
+  video_encoding_mode:
+    jpeg_quality: ${KASM_JPEG_QUALITY}
+    webp_quality: ${KASM_WEBP_QUALITY}
+    enter_video_encoding_mode:
+      area_threshold: ${KASM_VIDEO_AREA_THRESHOLD}

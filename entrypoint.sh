@@ -9,6 +9,18 @@ set -euo pipefail
 : "${VNC_PORT:=6901}"           # KasmVNC web/websocket port
 : "${VNC_DISPLAY:=:1}"
 
+# Image quality knobs substituted into ~/.vnc/kasmvnc.yaml below. Defaults
+# favour a clean 3D viewport over bandwidth; see the comments in that file.
+# These must be EXPORTED, not just set: envsubst reads the environment, so a
+# plain `: "${VAR:=default}"` renders the template with empty values.
+export KASM_MIN_QUALITY="${KASM_MIN_QUALITY:-8}"              # 0-9, rect quality floor (stock: 7)
+export KASM_MAX_QUALITY="${KASM_MAX_QUALITY:-9}"              # 0-9, 9 = best (stock: 8); 10 is OUT OF RANGE
+                                                              # and makes Xvnc refuse to start
+export KASM_JPEG_QUALITY="${KASM_JPEG_QUALITY:-9}"            # video mode, -1 = auto (stock: -1)
+export KASM_WEBP_QUALITY="${KASM_WEBP_QUALITY:-9}"            # video mode, -1 = auto (stock: -1)
+export KASM_VIDEO_AREA_THRESHOLD="${KASM_VIDEO_AREA_THRESHOLD:-98%}"  # % screen change that trips video mode
+export KASM_MAX_FRAME_RATE="${KASM_MAX_FRAME_RATE:-60}"
+
 export HOME=/root
 export DISPLAY="${VNC_DISPLAY}"
 
@@ -50,6 +62,22 @@ if [ "${pw_rc}" -ne 0 ] || [ ! -s /root/.kasmpasswd ]; then
     echo "[entrypoint] ERROR: could not set KasmVNC password (rc=${pw_rc}); web login will fail."
 else
     echo "[entrypoint] KasmVNC password set for '${VNC_USER}'."
+fi
+
+# Render the kasmvnc.yaml template (KASM_* -> values). The image ships the
+# template at /root/.vnc/kasmvnc.yaml.tmpl so a restart re-renders from the
+# original rather than from an already-substituted file.
+if [ -f /root/.vnc/kasmvnc.yaml.tmpl ]; then
+    envsubst '${KASM_MIN_QUALITY} ${KASM_MAX_QUALITY} ${KASM_JPEG_QUALITY} ${KASM_WEBP_QUALITY} ${KASM_VIDEO_AREA_THRESHOLD} ${KASM_MAX_FRAME_RATE}' \
+        < /root/.vnc/kasmvnc.yaml.tmpl > /root/.vnc/kasmvnc.yaml
+    # Only the substituted scalars -- a bare 'network:' section header also ends
+    # in a colon and must not trip this.
+    if grep -qE '^[[:space:]]+(min_quality|max_quality|jpeg_quality|webp_quality|area_threshold|max_frame_rate):[[:space:]]*$' /root/.vnc/kasmvnc.yaml; then
+        echo "[entrypoint] ERROR: kasmvnc.yaml has empty values after substitution;" >&2
+        echo "[entrypoint] falling back to KasmVNC defaults rather than shipping invalid YAML." >&2
+        rm -f /root/.vnc/kasmvnc.yaml
+    fi
+    echo "[entrypoint] KasmVNC quality: rect ${KASM_MIN_QUALITY}-${KASM_MAX_QUALITY}, video jpeg/webp ${KASM_JPEG_QUALITY}/${KASM_WEBP_QUALITY}, video mode above ${KASM_VIDEO_AREA_THRESHOLD} screen change."
 fi
 
 # Clean any stale lock from a previous run (important for RunPod restarts).

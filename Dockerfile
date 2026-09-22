@@ -144,8 +144,15 @@ RUN /opt/conda/bin/conda config --set auto_activate_base false \
 # ---------------------------------------------------------------------------
 # 5. VNC / desktop config + launchers
 # ---------------------------------------------------------------------------
+# envsubst, for rendering the kasmvnc.yaml quality template in entrypoint.sh.
+# Deliberately its OWN late layer: adding it to the apt layer near the top of
+# this file invalidates the cache for the ~30GB Isaac Sim pip layer below it,
+# turning a 40KB package into a 50-minute rebuild.
+RUN apt-get update && apt-get install -y --no-install-recommends gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY vnc/xstartup /root/.vnc/xstartup
-COPY vnc/kasmvnc.yaml /root/.vnc/kasmvnc.yaml
+COPY vnc/kasmvnc.yaml /root/.vnc/kasmvnc.yaml.tmpl
 COPY run-isaacsim.sh /usr/local/bin/run-isaacsim.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY vnc/IsaacSim.desktop /root/Desktop/IsaacSim.desktop
