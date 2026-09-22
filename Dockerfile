@@ -144,6 +144,26 @@ RUN /opt/conda/bin/conda config --set auto_activate_base false \
 # ---------------------------------------------------------------------------
 # 5. VNC / desktop config + launchers
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Make `isaacsim` work from a plain terminal, not just the launcher scripts.
+#
+# Isaac Sim 6.x native modules need GLIBCXX_3.4.32+; Ubuntu 22.04 ships
+# libstdc++ 3.4.30 while the conda env has 3.4.36. Without conda's lib ahead of
+# the system one, ~20 extensions fail to import ("cannot import name ... from
+# (unknown location)"), the app never reaches "App is loaded", and Kit usually
+# dies a few seconds later with no obvious cause.
+#
+# Scoped to the env via activate.d, so it applies on `conda activate
+# env_isaacsim` and nowhere else. Only ${CONDA_PREFIX}/lib goes here -- Isaac's
+# bundled ROS 2 libs stay scoped to run-isaacsim*.sh, because putting those on
+# every shell's path breaks the system `ros2` CLI.
+RUN mkdir -p /opt/conda/envs/env_isaacsim/etc/conda/activate.d \
+    && printf '%s\n' \
+        '#!/bin/bash' \
+        'export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"' \
+        > /opt/conda/envs/env_isaacsim/etc/conda/activate.d/zz-isaacsim-libstdcxx.sh \
+    && chmod +x /opt/conda/envs/env_isaacsim/etc/conda/activate.d/zz-isaacsim-libstdcxx.sh
+
 # envsubst, for rendering the kasmvnc.yaml quality template in entrypoint.sh.
 # Deliberately its OWN late layer: adding it to the apt layer near the top of
 # this file invalidates the cache for the ~30GB Isaac Sim pip layer below it,
