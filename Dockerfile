@@ -157,6 +157,12 @@ RUN /opt/conda/bin/conda config --set auto_activate_base false \
 # env_isaacsim` and nowhere else. Only ${CONDA_PREFIX}/lib goes here -- Isaac's
 # bundled ROS 2 libs stay scoped to run-isaacsim*.sh, because putting those on
 # every shell's path breaks the system `ros2` CLI.
+# PyNvVideoCodec: used only by nvenc-check.py, to prove an NVENC session can
+# actually be OPENED. Loading the library is not a sufficient test -- rented
+# GeForce hosts load it fine and still fail at session open.
+RUN source /opt/conda/etc/profile.d/conda.sh && conda activate env_isaacsim \
+    && pip install --no-cache-dir PyNvVideoCodec
+
 RUN mkdir -p /opt/conda/envs/env_isaacsim/etc/conda/activate.d \
     && printf '%s\n' \
         '#!/bin/bash' \
@@ -173,6 +179,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gettext-base \
 
 COPY vnc/xstartup /root/.vnc/xstartup
 COPY vnc/kasmvnc.yaml /root/.vnc/kasmvnc.yaml.tmpl
+COPY nvenc-check.py /usr/local/bin/nvenc-check.py
 COPY run-isaacsim.sh /usr/local/bin/run-isaacsim.sh
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY vnc/IsaacSim.desktop /root/Desktop/IsaacSim.desktop
